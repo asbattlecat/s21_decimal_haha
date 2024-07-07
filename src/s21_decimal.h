@@ -1,3 +1,6 @@
+#ifndef S21_DECIMAL
+#define S21_DECIMAL
+
 #include <stdio.h>
 
 #define ZERO 0b00000000000000000000000000000000
@@ -23,3 +26,6 @@ int set_bit(s21_decimal **result, int position);
 int define_int_number(int *position);
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
+int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
+
+#endif
