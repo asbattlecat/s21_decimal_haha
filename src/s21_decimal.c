@@ -10,9 +10,10 @@
 int main() {
   s21_decimal value_1, value_2, result;
   nulling(&value_1, &value_2, &result);
-  value_1.bits[0] = 0b11000000000000000000000000000000;
-  value_2.bits[0] = 0b10000000000000000000000000000000;
-  // result of sum: 0b...100001
+  value_1.bits[0] = 0b00000000000000000000000000101100;
+  value_2.bits[0] = 0b00000000000000000000000000011101;
+  // result of sum: 0b...1001001
+  // result of sub: 0b...01111
   set_scale(&value_1, 0);
   set_sign(&value_1, 0);
   if (!s21_add(value_1, value_2, &result)) {
@@ -21,7 +22,7 @@ int main() {
     printf("\n");
   }
   for (int i = 0; i <= 3; i++) {
-    printf("%u ", value_1.bits[i]);
+    printf("%u ", result.bits[i]);
   }
 }
 
@@ -51,7 +52,7 @@ int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     if (sub == 1) {
       set_bit(&result, position);
     } else if (sub == -1) {
-      
+
     }
   }
 }

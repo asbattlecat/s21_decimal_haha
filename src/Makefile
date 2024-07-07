@@ -1,5 +1,5 @@
 GCC=gcc -Wall -Werror -Wextra -std=c11
-FILES=s21_decimal.c s21_decimal.h helping_functions.c
+FILES=s21_decimal.c s21_decimal.h lib.c
 
 add: build
 
