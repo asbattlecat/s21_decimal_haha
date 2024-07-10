@@ -16,12 +16,14 @@ typedef struct {
 void nulling(s21_decimal *value_1, s21_decimal *value_2, s21_decimal *result);
 void print_binary(int num);
 void print_bits(s21_decimal bit);
-void set_scale(s21_decimal *bit, int scale);
 int get_scale(s21_decimal val);
-void set_sign(s21_decimal *bit, int sign);
-size_t get_bit(s21_decimal value, size_t position);
-void set_bit(s21_decimal **result, size_t position, int bit);
-size_t search_bit(s21_decimal value, size_t position);
+int get_bit(s21_decimal value, int position);
+int get_sign(s21_decimal value);
+void set_sign(s21_decimal **bit, int sign);
+void set_bit(s21_decimal **result, int position, int bit);
+void set_scale(s21_decimal *bit, int scale);
+int search_bit(s21_decimal value, int position);
+int search_bigger(s21_decimal value_1, s21_decimal value_2);
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
 int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);

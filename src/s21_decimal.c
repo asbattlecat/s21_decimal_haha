@@ -10,13 +10,10 @@
 int main() {
   s21_decimal value_1, value_2, result;
   nulling(&value_1, &value_2, &result);
-  value_1.bits[0] = 0b00000000000000000000000000101100;
-  value_2.bits[0] = 0b00000000000000000000000000011101;
-  // result of sum: 0b...1001001
-  // result of sub: 0b...01111
-  set_scale(&value_1, 0);
-  set_sign(&value_1, 0);
-  if (!s21_sub(value_1, value_2, &result)) {
+  value_2.bits[0] = 0b00000000000000000000000001111111;
+  value_2.bits[3] = 0b10000000000000000000000000000000;
+  value_1.bits[0] = 0b00000000000000000000000000011111;
+  if (!s21_add(value_1, value_2, &result)) {
     printf("Result: \n\n");
     print_bits(result);
     printf("\n");
@@ -26,10 +23,32 @@ int main() {
   }
 }
 
+/*
+  Условия для вызова в s21_add s21_sub:
+    1. |value_1| > value_2 && value_1 < 0 && value_2 > 0
+    2. |value_2| > value_1 && value_2 < 0 && value_1 > 0
+*/
+
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
   // buffer - для "запоминания" того, что к следующему биту перешла 1
-  int return_value = OK, buffer = 0, sum;
-  for (size_t position = 0; position < 95; position++) {
+  int return_value = OK, buffer = 0, sum, sub_completed = 0;
+  if (search_bigger(value_1, value_2) && get_sign(value_2) &&
+      !get_sign(value_1)) {
+        s21_decimal temp_value_1 = value_1;
+        value_1 = value_2;
+        value_2 = temp_value_1;
+      }
+  if (search_bigger(value_2, value_1) && get_sign(value_1) &&
+      !get_sign(value_2)) {
+    s21_decimal *copy_value_1 = &value_1;
+    set_sign(&copy_value_1, 0);
+    value_1 = *copy_value_1;
+    s21_decimal copy_result = *result;
+    s21_sub(value_2, value_1, &copy_result);
+    *result = copy_result;
+    sub_completed = 1;
+  }
+  for (int position = 0; position < 95 && !sub_completed; position++) {
     sum = get_bit(value_1, position) + get_bit(value_2, position) + buffer;
     buffer = 0;
     if (sum == 1) {
@@ -46,24 +65,28 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
 
 // пока работает только в случае, если value_1 > value_2
 int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
-  // копии value_1 и value_2 для того, чтобы в них можно было менять биты,
-  // используя текущий вариант фукнции set_bit
-  // убрал copy_2 временно для компиляции текущей версии
-  s21_decimal *copy_1 = &value_1;
-  // sub - subtraction
   int return_value = OK, sub;
-  for (size_t position = 0; position < 95; position++) {
+  if (search_bigger(value_1, value_2)) {
+    s21_decimal temp = value_1;
+    value_1 = value_2;
+    value_2 = temp;
+    set_sign(&result, 1);
+  }
+  s21_decimal *copy_value_1 = &value_1;
+  for (int position = 0; position < 95; position++) {
     sub = get_bit(value_1, position) - get_bit(value_2, position);
     if (sub == 1) {
       set_bit(&result, position, 1);
     } else if (sub == -1) {
-      // older_one - переменная, которая хранит в себе позицию следующего единичного бита
-      size_t older_one = search_bit(value_1, position);
-      set_bit(&copy_1, older_one--, 0);
-      while(older_one != position) {
-        set_bit(&copy_1, older_one--, 1);
+      // older_one - переменная, которая хранит в себе позицию следующего
+      // единичного бита
+      int older_one = search_bit(value_1, position);
+      set_bit(&copy_value_1, older_one--, 0);
+      while (older_one != position) {
+        set_bit(&copy_value_1, older_one--, 1);
       }
       set_bit(&result, position, 1);
+      value_1 = *copy_value_1;
     }
   }
   return return_value;
