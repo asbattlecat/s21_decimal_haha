@@ -12,9 +12,7 @@ void nulling(s21_decimal *value_1, s21_decimal *value_2, s21_decimal *result) {
   }
 }
 
-int get_scale(s21_decimal val){
-  return val.bits[3] >> 16 & 0xFF;
-}
+int get_scale(s21_decimal val) { return val.bits[3] >> 16 & 0xFF; }
 
 void set_scale(s21_decimal *val, int scale) {
   if (scale > 255) scale = scale & 0xFF;
@@ -28,13 +26,28 @@ void set_sign(s21_decimal *value_1, int sign) {
 }
 
 // считывание бита в определенной позиции в s21_decimal
-int get_bit(s21_decimal value, int position) {
+size_t get_bit(s21_decimal value, size_t position) {
   return value.bits[position / 32] >> (position % 32) & 0x01;
 }
 
 // помещение бита в определенную позицию в s21_decimal
-void set_bit(s21_decimal **value, int position) {
-  (*value)->bits[position / 32] |= 0x01 << (position % 32);
+void set_bit(s21_decimal **value, size_t position, int bit) {
+  if (bit == 1) {
+    (*value)->bits[position / 32] |= 0x01 << (position % 32);
+  } else if (bit == 0) {
+    (*value)->bits[position / 32] &= ~(0x01 << (position % 32));
+  }
+}
+
+// ищет более старший единичный бит относительно рассматриваемого
+// !!!!!! добавить любо сюда, либо в другое место случай, если не находит
+// !!!!!! старший единичный бит, в таком случае надо менять местами value_1 и
+// !!!!!! value_2
+size_t search_bit(s21_decimal value, size_t position) {
+  while (get_bit(value, position) != 1) {
+    ++position;
+  }
+  return position;
 }
 
 void print_binary(int num) {

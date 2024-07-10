@@ -19,8 +19,9 @@ void print_bits(s21_decimal bit);
 void set_scale(s21_decimal *bit, int scale);
 int get_scale(s21_decimal val);
 void set_sign(s21_decimal *bit, int sign);
-int get_bit(s21_decimal value, int position);
-void set_bit(s21_decimal **result, int position);
+size_t get_bit(s21_decimal value, size_t position);
+void set_bit(s21_decimal **result, size_t position, int bit);
+size_t search_bit(s21_decimal value, size_t position);
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
 int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
