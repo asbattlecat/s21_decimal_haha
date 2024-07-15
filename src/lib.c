@@ -1,5 +1,20 @@
 #include "s21_decimal.h"
 
+// печать в опщимта
+void print_binary(int num) {
+  for (int i = 31; i >= 0; i--) {
+    printf("%d", (num >> i) & 1);
+  }
+}
+void print_bits(s21_decimal val) {
+  printf("[%10s] %d\n", "Exponent", get_scale(val));
+  for (int i = 3; i >= 0; i--) {
+    print_binary(val.bits[i]);
+    printf(" ");
+  }
+}
+//
+
 // зануляет все переменные
 void nulling(s21_decimal *value_1, s21_decimal *value_2, s21_decimal *result) {
   for (int i = 0; i < 4 && value_1 != NULL; i++) {
@@ -19,6 +34,11 @@ int get_scale(s21_decimal value) { return value.bits[3] >> 16 & 0xFF; }
 // считывание бита в определенной позиции в s21_decimal
 int get_bit(s21_decimal value, int position) {
   return value.bits[position / 32] >> (position % 32) & 0x01;
+}
+
+float get_bit_float(float value, int position) {
+  float one = 1.0;
+  return value & (one << position);
 }
 
 // получает данные о знаке, если 1 - то знак минус
@@ -76,18 +96,4 @@ int search_bigger(s21_decimal value_1, s21_decimal value_2) {
   }
 
   return return_value;
-}
-
-void print_binary(int num) {
-  for (int i = 31; i >= 0; i--) {
-    printf("%d", (num >> i) & 1);
-  }
-}
-
-void print_bits(s21_decimal val) {
-  printf("[%10s] %d\n", "Exponent", get_scale(val));
-  for (int i = 3; i >= 0; i--) {
-    print_binary(val.bits[i]);
-    printf(" ");
-  }
 }
