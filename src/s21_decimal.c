@@ -23,12 +23,12 @@ int main() {
   }
 }
 
+
 /*
   Условия для вызова в s21_add s21_sub:
     1. |value_1| > value_2 && value_1 < 0 && value_2 > 0
     2. |value_2| > value_1 && value_2 < 0 && value_1 > 0
 */
-
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
   // buffer - для "запоминания" того, что к следующему биту перешла 1
   int return_value = OK, buffer = 0, sum, sub_completed = 0;
