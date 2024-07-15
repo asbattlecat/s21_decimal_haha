@@ -1,99 +1,123 @@
 #include "s21_decimal.h"
 
+#include <math.h>
+#include <stdio.h>
 int main() {
-  s21_decimal value_1, value_2, result;
- // nulling(&value_1, &value_2, &result);
-  value_1.bits[0] = 0b00000000000000000000000001011111;
-  value_1.bits[1] = 0b10000000000000000000000000001111;
-  value_1.bits[2] = 0b00000000000000000000000011111111;
-  value_1.bits[3] = 0b11111111111111111111111111111111;
- // set_1_bit(&value_2.bits[3], 0);
-  int wow = -213452512;
-  int wow2 = 0;
-  //s21_from_int_to_decimal(wow, &value_1);
-  s21_from_decimal_to_int(value_1, &wow2);
-  //set_0_bit(&value_1.bits[3], 30);
-  //print_binary(value_1.bits[3]);
-  int scale =  get_scale(value_1);
- // printf("%d", scale);
-  //printf("%d\n", wow2);
-  //print_bits(&value_1);
-  int currently = find_bit(value_1, 95);
-  printf("%d", currently);
+  printf("ebashim decimal Ruslan i Bimba i Eugeen \n \
+  it works? yes");
 }
 
-void set_1_bit(unsigned int *src, unsigned int index) {
-   *src |= (1u << index);
-}
+// Задача функции - перекидывать лишние биты в более старший int.
+int get_overflow(work_decimal *dec) {
+  int overflow = 0;
 
-void set_0_bit(unsigned int *src, unsigned int index) {
-  *src &= ~(1u << index); 
-}
-
-void print_binary(int num) {
-  for (int i = 31; i >= 0; i--) {
-    printf("%d", (num >> i) & 1);
+  //Проверяем каждый int в нашем большууууущем decimal на то, 
+ // что в нем записано больше, чем 32 бита (наш предел для 32-битного int)
+ // если больше - перекидываем все лишнее на int вверх.
+  for (int i = 0; i < 7; i++) {
+    dec->bits[i] += overflow;
+    overflow = dec->bits[i] >> 32;
+    dec->bits[i] &= MAX4BITE;
   }
-}
 
-void print_bits(s21_decimal *val) {
-  for (int i = 3; i >= 0; i--) {
-    print_binary(val->bits[i]);
-    printf(" ");
+  int result = 0;
+
+
+  if (overflow) {
+    result = 1;
   }
-  printf("\n");
+
+  return result;
 }
 
-int get_bit(unsigned int src, unsigned int index) {
-  return (src >> index) & 1; 
-}
-int get_sign(s21_decimal src) {
-  if (get_bit(src.bits[3], 31)) {
-    return 1;  
+
+//производим смещение точки влево
+//умножаем все инты на 10 и производим увеличение scale
+
+int pointleft(work_decimal *dec) {
+  work_decimal temp_dec = *dec;
+  for (int i = 0; i < 7; i++) {
+    temp_dec.bits[i] *= 10;
   }
-  return 0;  
-}
+  temp_dec.scale++;
 
-int get_scale(s21_decimal dst) {
-  int mask = 127 << 16; // 01111                  
-  int scale = (mask & dst.bits[3]) >> 16; 
-  return scale;
-}
-
-int s21_from_int_to_decimal(int src, s21_decimal *dst) {
-  *dst = (s21_decimal){0};  
-  if (src < 0) {
-    set_1_bit(&dst->bits[3], 31);  
-    src = -src;   
+  int overflowed = 0;
+  
+  //проверка на переполнение
+  if (get_overflow(&temp_dec)) {
+    overflowed = 1;
+  } else {
+    *dec = temp_dec;
   }
-  dst->bits[0] = src; 
-  return 0; 
+  return overflowed;
 }
 
-int s21_from_decimal_to_int(s21_decimal src, int *dst) {
-  int ret = 1;           
-  if (*dst == 0) {      
-    *dst = src.bits[0]; 
-    *dst = *dst * (get_bit(src.bits[3], 31) ? -1 : 1);
-    ret = 0;                
+
+//производим смешение точки право
+//делим все int на 10 - тем самым уменьшаем scale
+//функция - полный антогонист pointletf
+
+int pointright(work_decimal *dec) {
+  long int remainder = 0;
+  for (int i = 6; i >=0; i--) {
+    dec->bits[i] += remainder << 32;// производим запись остатка в конец меньшего int;
+    remainder = dec->bits[i] % 10;  // остаток от будущего деления.
+    dec->bits[i] /= 10; 
+
   }
-  return ret; 
+  dec->scale--;
+  return remainder;
 }
 
-int find_bit(s21_decimal dst, int index) {
-    int mask = 1u << (index % 32);
-    return (dst.bits[index/32] & mask) != 0;
-}
+// функция, которая подготавливает work decimal к нашему нормальному s21_decimal
+int normalize(work_decimal *dec, const int summ, const int sign) {
+  int trash = 0;
+  int error = 0;
+  int last = 0;
+  work_decimal temp_dec = *dec;
 
-s21_big_decimal norm_to_big(s21_decimal src) {
-  s21_big_decimal res = {0};
-  unsigned int exp = get_exp(src);
-  for (int i = 0; i < 3; i++)
-    res.bits[i] = src.bits[i];
-    res.exp = exp;                          
-  return res;
-}
+  for (int i = 6; i > 2; i--) {
+    // перетягиваем все int'ы из word decimal для того, чтобы они уместились
+    // в наш любименький s21_decimal, если нам позволяет наш scale, что значит 
+    // должны остаться лишь три низших intа - иначе переполнение.
+    while (temp_dec.bits[i] != 0 && temp_dec.scale > 0) {
+      last = pointright(&temp_dec);
+      trash+= last;
+    }
+    if (((last > 5 || last == 5) && trash > 5) || 
+    (last == 5 && trash == 5 && 
+    (temp_dec.bits[0] % 10) % 2 == 1)) { // банковское округление 
+    if(!sign) {
+      temp_dec.bits[0]++;
+      get_overflow(&temp_dec);
+    }
+    }
+  }
 
-int get_exp(s21_decimal src) {
-  return (src.bits[3] & EXP) >> 16; 
+  //Если мы будем нормализовать из какой-нибудь функции (например сложение), то
+  //если вдруг все биты заполнены и есть еще мусор = значит произошло переполнение
+
+  if (summ && trash && temp_dec.bits[0] == 0xffffffff && 
+  temp_dec.bits[1] == 0xffffffff && temp_dec.bits[2] == 0xffffffff) {
+    error = 1;
+  }
+
+
+  for (int i = 3; i < 7; i++) {
+    // проверка свободны ли int старше 3-его, если нет - переполнение
+    if (temp_dec.bits[i] != 0 && temp_dec.scale == 0) {
+      error = 1;
+      i = 7;
+    }
+  }
+
+
+  // переполнения не случилось, все отлично - можно переписывать 
+  // work decimal
+
+  if (!error) {
+    *dec = temp_dec;
+  }
+
+  return error;
 }

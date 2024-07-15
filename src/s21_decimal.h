@@ -1,24 +1,21 @@
-#include <stdio.h>
+#define MINUS 0x80000000 //sing of minus 10000000 00000000 00000000 00000000
+#define SCALE 0x00ff0000 // thats scaaale 00000000 11111111 00000000 00000000
+#define MAX4BITE 0xffffffff // 4 bits are full 11111111 11111111 11111111 11111111
 
+
+//наш классический децимал
 typedef struct {
-    unsigned int bits[4];
-} s21_decimal;
+    int bits[4];
+}s21_decimal;
 
+//децимал для вычислений, жирненький слегка
 typedef struct {
-    unsigned long long bits[7];
-    int exp;
-} s21_big_decimal;
+    long int bits[7]; // будем использоваться бит x2 
+    short int scale; // для scale достаточно маленького инта
+} work_decimal;
 
-#define EXP 0x00ff0000 // 00000000 11111111 00000000 00000000
-
-void set_1_bit(unsigned int *src, unsigned int index);
-void set_0_bit(unsigned int *src, unsigned int index);
-void print_binary(int num);
-void print_bits(s21_decimal *val);
-int get_sign(s21_decimal src);
-int get_scale(s21_decimal dst);
-int s21_from_int_to_decimal(int src, s21_decimal *dst);
-int s21_from_decimal_to_int(s21_decimal src, int *dst);
-int find_bit(s21_decimal dst, int index);
-s21_big_decimal norm_to_big(s21_decimal src);
-int get_exp(s21_decimal src);
+//мне подсказал Бимба, когда курили у горячего Цеха что можно сделать бигдецимал
+//из двух обычных - и я решил что это просто отличная идея.
+typedef struct {
+    s21_decimal decimal[2];
+} big_decimal;
