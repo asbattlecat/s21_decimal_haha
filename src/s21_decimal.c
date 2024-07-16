@@ -151,4 +151,34 @@ s21_decimal work_to_decimal(work_decimal src) {
   result.bits[3] |= (src.scale << 16);
   return result;
 }
-// Продолжу завтра
+//Совершаем преобразование обоих децималов в один scale
+//для удобства вычислений. 
+// 
+//после проверки входим в цикл и увеличиваем масштаб децимала пока он не станет
+//равен масштабу второго децимала, или не произойдет переполнение.
+
+void scale_to_normal(work_decimal *dec1_work, work_decimal *dec2_work) {
+  if (dec1_work->scale < dec2_work->scale) {
+    //умножаем на 10 первый, если он меньше второго
+    while(dec1_work->scale != dec2_work->scale && !pointleft(dec1_work));
+  } else if (dec2_work->scale < dec1_work->scale) {
+    //умножаем на 10 второй, если он меньше первого
+    while(dec1_work->scale != dec2_work->scale && !pointleft(dec2_work));
+  }
+}
+
+
+int s21_is_equal(s21_decimal src1, s21_decimal src2) {
+  int result = 1;
+
+  // если все биты равны нулю, но знак разный, то 
+  // -0 == +0 
+  if ((src1.bits[3] & MINUS != src2.bits[3] & MINUS) &&
+  ((src1.bits[0] == src2.bits[0]) && (src1.bits[1] == src2.bits[1]) &&
+  (src1.bits[2] == src2.bits[2]) && (src1.bits[0] == 0) &&
+  (src1.bits[1] == 0) && (src1.bits[2] == 0))) 
+result = 1;
+}
+
+//продолжу завтра, пометка для себя - мысль //знак разный и не равны нулю//  
+
