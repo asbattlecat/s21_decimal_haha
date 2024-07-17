@@ -176,9 +176,101 @@ int s21_is_equal(s21_decimal src1, s21_decimal src2) {
   if ((src1.bits[3] & MINUS != src2.bits[3] & MINUS) &&
   ((src1.bits[0] == src2.bits[0]) && (src1.bits[1] == src2.bits[1]) &&
   (src1.bits[2] == src2.bits[2]) && (src1.bits[0] == 0) &&
-  (src1.bits[1] == 0) && (src1.bits[2] == 0))) 
-result = 1;
+  (src1.bits[1] == 0) && (src1.bits[2] == 0))) {
+  result = 1;
+  //Если знак разный, тогда не равны
+  } else if ((src1.bits[3] & MINUS) != (src2.bits[3] & MINUS)) {
+    result = 0;
+  } else {
+    // если два прошлых условия false 
+    // приводим децималы к общему масштабу и сравниваем
+    work_decimal src1_work, src2_work;
+    //работаем с длинными децималами, чтобы удобно домножить на 10 и сравить
+    src1_work = decimal_to_work(src1);
+    src2_work = decimal_to_work(src2);
+
+
+  // умножаем один из длинных децималов, если есть необходимость
+    scale_to_normal(&src1_work, &src2_work);
+    for (int i = 2; i >= 0; i--) {
+      // если различий в трех малых интах нет, значит децималы равны
+      if (src1_work.bits[i] != src2_work.bits[i]) {
+        result = 0;
+      }
+    }
+    return result;
+  }
 }
 
-//продолжу завтра, пометка для себя - мысль //знак разный и не равны нулю//  
+int s21_is_less(s21_decimal src1, s21_decimal src2) {
+  int result = 1;
+  // децималы равны или второй со знаком минус, а первый нет
+  //возвращаем - 0, src1 не меньше src2
+  if ((src1.bits[3] & MINUS) < (src2.bits[3] & MINUS) || 
+  s21_is_equal(src1, src2)) {
+    result = 0;
+  } else if 
+    //извлекаю знак и проверяю, если перввый отрицательный, а 
+    //второй децимал нет - то , sr1 меньше sr2, возвращаю 1;
+    ((src1.bits[3] & MINUS) > (src2.bits[3] & MINUS)) {
+      result = 1;
+    } else {
+    work_decimal src1_work, src2_work;
+    src1_work = decimal_to_work(src1);
+    src2_work = decimal_to_work(src2);
+    scale_to_normal(&src1_work, &src2_work); //приводим к общему scale
+    for (int i = 2; i >= 0; i--) {
+      //если старшие биты первого децимала меньше то,
+      //значит что весь первый децимал меньше второго
+      if(src1_work.bits[i] < src2_work.bits[i]) {
+      result = 1;
+      i = -1; // заканчиваем цикл
+    } else if (src1_work.bits[i] > src2_work.bits[i]) {
+      result = 0;
+      i = -1;
+    }
+  }
 
+  // если оба числа отрицательные - тогда инвертирем результат
+  if (src1.bits[3] & MINUS) {
+    if (result == 0) result = 1;
+    else if (result == 1) result = 0;
+  }
+  return result;
+}
+}
+
+
+//следующие функции просто комбинации из тех, что выше
+
+int s21_is_less_or_equal(s21_decimal src1, s21_decimal src2) {
+  int result = 0;
+  if (s21_is_equal(src1, src2) || s21_is_less(src1, src2)) {
+    result = 1;
+  }
+  return result;
+}
+
+int s21_is_greater(s21_decimal src1, s21_decimal src2) {
+  int result = 1;
+  if (s21_is_less_or_equal(src1, src2)) {
+    result = 0;
+  }
+  return result;
+}
+
+int s21_is_greater_or_equal(s21_decimal src1, s21_decimal src2) {
+  int result = 1;
+  if (s21_is_less(src1, src2)) {
+    result = 0;
+  }
+  return result;
+}
+
+int s21_is_not_equal(s21_decimal src1, s21_decimal src2) {
+  int result = 1;
+  if (s21_is_equal(src1, src2)) {
+    result = 0;
+  }
+  return result;
+}
