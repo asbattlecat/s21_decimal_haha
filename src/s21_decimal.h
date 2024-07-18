@@ -38,3 +38,4 @@ int s21_add(s21_decimal src1, s21_decimal src2, s21_decimal *sum);
 int s21_sub(s21_decimal src1, s21_decimal src2, s21_decimal *sub);
 int s21_from_decimal_to_int(s21_decimal src, int *dst);
 int s21_from_int_to_decimal(int src, s21_decimal *dst);
+

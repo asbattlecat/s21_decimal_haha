@@ -27,7 +27,6 @@ int get_overflow(work_decimal *src) {
   return result;
 }
 
-
 //производим смещение точки влево
 //умножаем все инты на 10 и производим увеличение scale
 
@@ -48,7 +47,6 @@ int pointleft(work_decimal *src) {
   }
   return overflowed;
 }
-
 
 //производим смешение точки право
 //делим все int на 10 - тем самым уменьшаем scale
@@ -119,20 +117,18 @@ int normalize(work_decimal *src, const int summ, const int sign) {
   return error;
 }
 
-// сделаем рассширенный work_decimal с большим количеством интов 
-// сами int - тоже больше, используем long int на основе 
-// обычного s21_decimal
-
+// создаем расширенный work_decimal с бОльшим количеством int (и
+// сами int больше) на основе обычного s21_decimal
 work_decimal decimal_to_work(s21_decimal src) {
   work_decimal result;
-  result.bits[0] = src.bits[0] && FULLBITES;
-  result.bits[1] = src.bits[1] && FULLBITES;
-  result.bits[2] = src.bits[2] && FULLBITES;
+  result.bits[0] = src.bits[0] & FULLBITES;
+  result.bits[1] = src.bits[1] & FULLBITES;
+  result.bits[2] = src.bits[2] & FULLBITES;
   result.bits[3] = 0;
   result.bits[4] = 0;
   result.bits[5] = 0;
   result.bits[6] = 0;
-  result.scale = (src.bits && SCALE) >> 16;
+  result.scale = (src.bits[3] & SCALE) >> 16;
   return result;
 }
 
@@ -341,9 +337,53 @@ int s21_add(s21_decimal src1, s21_decimal src2, s21_decimal *sum) {
   return result;
 }
 
-// меняем знакм второго децимала и складываем с помощью функции s21_add
+// меняем знак второго децимала и складываем с помощью функции s21_add
 int s21_sub(s21_decimal src1, s21_decimal src2, s21_decimal *sub) {
   src2.bits[3] = (src1.bits[3] & MINUS) ? src1.bits[3] & ~MINUS :
   src2.bits[3] | MINUS;
   return s21_add(src1, src2, sub);
+}
+
+int s21_from_int_to_decimal(int figure, s21_decimal *src) {
+  s21_decimal temp_src = {{0, 0, 0, 0}};
+  temp_src.bits[3] = (figure < 0) ? MINUS : 0;  // вычисляем знак числа
+
+  //передаем в decimal наше число, но уже без последнего инта, тк
+  //мы уже обработали знак - но значение нужно инвертировать
+  //как и ранее в сумме используем метод дополнение до двух
+  temp_src.bits[0] = (figure < 0) ? (~figure & ~MINUS) + 1 : figure & ~MINUS;
+  *src = temp_src;
+  return 0;
+}
+
+int s21_from_decimal_to_int(s21_decimal src, int *figure) {
+  int result = 0;
+  work_decimal src_work = decimal_to_work(src);
+  //проверка на скейл, если он превышает 28 - обрезаем до 28
+  //если меньше, ставим тот, что есть.
+  int scale =
+      (((src.bits[3] & SCALE) >> 16) > 28) ? 28 : ((src.bits[3] & SCALE) >> 16);
+
+  //отбрасываем все, что после точки, так как мы хотим получить целое число
+  for (int i = 0; i < scale; i++) {
+    pointright(&src_work);
+  }
+
+  // проверяем не переполнен ли у нас децимал. должен быть занят
+  // только самый младший бит, если больше - мы вылезли
+  // за размеры инта, а значит - переполнение.
+  for (int i = 6; i > 0; i--) {
+    if (src_work.bits[i] != 0) {
+      result = 1;
+      i = 0;
+    }
+  }
+  if (!result) {
+    // передаем из нашено int в dst int
+    *figure = src_work.bits[0];
+
+    // умножаем dst на -1 если децимал отрицательный
+    *figure *= (src.bits[3] & MINUS) ? -1 : 1;
+  }
+  return result;
 }
