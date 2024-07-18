@@ -10,7 +10,7 @@ typedef struct {
 
 //децимал для вычислений, жирненький слегка
 typedef struct {
-    long int bits[7]; // будем использоваться бит x2 
+    long int bits[7]; // будет использоваться бит x2 
     short int scale; // для scale достаточно маленького инта
 } work_decimal;
 
@@ -19,3 +19,22 @@ typedef struct {
 typedef struct {
     s21_decimal decimal[2];
 } big_decimal;
+
+
+int get_overflow(work_decimal *src);
+int pointleft(work_decimal *src);
+int pointright(work_decimal *src);
+int normalize(work_decimal *src, const int summ, const int sign);
+work_decimal decimal_to_work(s21_decimal src);
+s21_decimal work_to_decimal(work_decimal src);
+void scale_to_normal(work_decimal *dec1_work, work_decimal *dec2_work);
+int s21_is_equal(s21_decimal src1, s21_decimal src2);
+int s21_is_less(s21_decimal src1, s21_decimal src2);
+int s21_is_less_or_equal(s21_decimal src1, s21_decimal src2);
+int s21_is_greater(s21_decimal src1, s21_decimal src2);
+int s21_is_greater_or_equal(s21_decimal src1, s21_decimal src2);
+int s21_is_not_equal(s21_decimal src1, s21_decimal src2);
+int s21_add(s21_decimal src1, s21_decimal src2, s21_decimal *sum);
+int s21_sub(s21_decimal src1, s21_decimal src2, s21_decimal *sub);
+int s21_from_decimal_to_int(s21_decimal src, int *dst);
+int s21_from_int_to_decimal(int src, s21_decimal *dst);
