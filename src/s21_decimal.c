@@ -421,7 +421,7 @@ s21_decimal binary_and(s21_decimal s21_decimal_1, s21_decimal s21_decimal_2) {
   res.bits[0] = s21_decimal_1.bits[0] & s21_decimal_2.bits[0];
   res.bits[1] = s21_decimal_1.bits[1] & s21_decimal_2.bits[1];
   res.bits[2] = s21_decimal_1.bits[2] & s21_decimal_2.bits[2];
-  res.bits[3] = s21_decimal_1.bits[0] & s21_decimal_2.bits[3];
+  res.bits[3] = s21_decimal_1.bits[3] & s21_decimal_2.bits[3];
   return res;
 }
 
