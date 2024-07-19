@@ -1,7 +1,7 @@
+#include "s21_decimal.h"
+
 #include <check.h>
 #include <stdio.h>
-
-#include "s21_decimal.h"
 
 START_TEST(test_add) {
   {
@@ -17,7 +17,7 @@ START_TEST(test_add) {
     s21_from_decimal_to_int(res_dec, &res_int);
     ck_assert_int_eq(res_int, sum_int);
     ck_assert_int_eq(s21_add(a, b, &res_dec), 0);
-    
+
     num1 = 1200;
     num2 = 3200;
     sum_int = 4400;
