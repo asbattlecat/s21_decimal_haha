@@ -50,3 +50,11 @@ big_decimal binary_big_shift_left(big_decimal decimal, int shift);
 s21_decimal binary_xor(s21_decimal decimal_1, s21_decimal decimal_2);
 big_decimal big_decimal_bin_add(big_decimal decimal_1, big_decimal decimal_2);
 big_decimal bin_multi(s21_decimal value_1, s21_decimal value_2);
+int decimal_compare(s21_decimal dec1, s21_decimal dec2);
+int big_decimal_compare(big_decimal dec1, big_decimal dec2);
+s21_decimal decimal_bin_not(s21_decimal dec);
+big_decimal big_dec_binar_sub(big_decimal dec_1, big_decimal dec_2);
+s21_decimal binary_shift_right_one(s21_decimal dec);
+big_decimal binary_big_shift_right(big_decimal dec, int shift);
+big_decimal big_decimal_bin_div(big_decimal dec1, big_decimal dec2,
+                                big_decimal *ost);

@@ -674,21 +674,69 @@ big_decimal binary_big_shift_right(big_decimal dec, int shift) {
   }
   return res;
 }
+
 //бинарное деление через вычитание - метод восстановления остатка
 big_decimal big_decimal_bin_div(big_decimal dec1, big_decimal dec2,
-big_decimal *ost) {
-big_decimal res;
-//частичный остаток при расчетах:
-big_decimal part_ost = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
-//частное
-big_decimal quotient = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
-//сначала проверяем крайние случаи - делимое равно 0: 
-if (decimal_equal_zero(dec1.decimal[0])
-&& decimal_equal_zero(dec1.decimal[1])) {
-  part_ost = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
-  quotient = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
-} else if (big_decimal_compare(dec1, dec2) == -1) {
-  //делимое меньше делителя
+                                big_decimal *ost) {
+  big_decimal res;
+  //частичный остаток при расчетах:
+  big_decimal part_ost = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+  //частное
+  big_decimal quotient = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+  //сначала проверяем крайние случаи - делимое равно 0:
+  if (decimal_equal_zero(dec1.decimal[0]) &&
+      decimal_equal_zero(dec1.decimal[1])) {
+    part_ost = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+    quotient = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+  } else if (big_decimal_compare(dec1, dec2) == -1) {
+    //делимое меньше делителя
+    quotient = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+    part_ost = dec1;
+  } else {
+    //во всех остальных случаях используем метод восстановления остатка
+    //для начала рассчитываем предварительных сдвиг делителя
+    int left_1 = get_not_zero_bit(dec1.decimal[1]);
+    left_1 = (left_1 == -1) ? get_not_zero_bit(dec1.decimal[0]) : 128 + left_1;
+    int left_2 = get_not_zero_bit(dec2.decimal[1]);
+    left_2 = (left_2 == -1) ? get_not_zero_bit(dec2.decimal[0]) : 128 + left_2;
+    int shift = left_1 - left_2;
+    //сдвинутый делитель
+    big_decimal shifted_divisor = binary_big_shift_left(dec2, shift);
+    // div для промежуточных расчетов, изначально равен dec1
+    big_decimal div = dec1;
+    //флаг для проведения вычитания, на первой итерации вычитаем всегда
+    int substr_needy = 1;
+    for (int i = shift; i >= 0; i--) {
+      //определяем действия = прибавлять или вычитать сдвинутый делитель
+      part_ost = (substr_needy == 1)
+                     ? big_dec_binar_sub(div, shifted_divisor)
+                     : big_decimal_bin_add(div, shifted_divisor);
+      //сдвиг влево на 1 частное и записываем в младший бит результата 1
+      //если старший бит частичного остатка равен 1
+      quotient = binary_big_shift_left(quotient, 1);
+      if (is_decimal_set_bit(part_ost.decimal[1], 127) == 0)
+        quotient.decimal[0] = decimal_set_bit(quotient.decimal[0], 0);
+      //определяем делимое для следующей итерацией
+      //(сдвиг влево на 1 частичного остатка)
+      div = binary_big_shift_left(part_ost, 1);
+      //если старший бит частичного остатка равен 0, то на следующей итерации
+      //цикла, необходимо проводить вычитание (не проводим восстановление
+      //остатка)
+      substr_needy =
+          (is_decimal_set_bit(part_ost.decimal[1], 127) == 0) ? 1 : 0;
+    }
+    //проверяем требуется ли коррекция остатка
+    if (is_decimal_set_bit(part_ost.decimal[1], 127)) {
+      part_ost = big_decimal_bin_add(part_ost, shifted_divisor);
+    }
+    //возвращаем на место частичный остаток
+    part_ost = binary_big_shift_right(part_ost, left_1 - left_2);
+  }
+  res = quotient;
+  if (ost != NULL) *ost = part_ost;
+  return res;
 }
-}
-//in process.. еще пишу алгоритм в тетрадке
+
+
+// in process.. еще пишу алгоритм в тетрадке
+//int big_decimal_get_shift_to_decimal
