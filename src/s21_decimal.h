@@ -49,3 +49,4 @@ s21_decimal binary_shift_left_one(s21_decimal decimal);
 big_decimal binary_big_shift_left(big_decimal decimal, int shift);
 s21_decimal binary_xor(s21_decimal decimal_1, s21_decimal decimal_2);
 big_decimal big_decimal_bin_add(big_decimal decimal_1, big_decimal decimal_2);
+big_decimal bin_multi(s21_decimal value_1, s21_decimal value_2);

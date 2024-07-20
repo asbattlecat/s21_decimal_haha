@@ -543,4 +543,152 @@ big_decimal big_decimal_bin_add(big_decimal decimal_1, big_decimal decimal_2) {
   return res;
 }
 
+//функция которая складывает побитово 2 числа из обычного децимала
+//и возвращает результат в биг децимале
+//алгоритм умножения реализован через сложение и сдвиг
+big_decimal bin_multi(s21_decimal value_1, s21_decimal value_2) {
+  //инициализация результата
+  big_decimal res = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+  //темп принимает значение первого числа
+  big_decimal temp = decimal_to_big(value_1);
+  //находим первый не нулевой бит, чтобы сделать цикл короче
+  int max_bit = get_not_zero_bit(value_2);
 
+  for (int i = 0; i <= max_bit; i++) {
+    //в цикле проверяем, если бит value 2 равен 1
+    //мы складываем резалт и темп, если 0 - оставляем без изменения
+    //и каждую иттерацию делаем сдвиг temp'a на 1 влево
+    if (is_decimal_set_bit(value_2, i) != 0) {
+      res = big_decimal_bin_add(res, temp);
+    }
+    temp = binary_big_shift_left(temp, 1);
+  }
+  return res;
+}
+
+//функция для сравнения битов между обычными децималами
+
+int decimal_compare(s21_decimal dec1, s21_decimal dec2) {
+  int res = 0;
+  for (int i = 127; i >= 0; i--) {
+    int bit_1 = ((dec1.bits[i / 32] & (1U << i % 32))) != 0;
+    int bit_2 = ((dec2.bits[i / 32] & (1U << i % 32))) != 0;
+    //проверяем в цикле каждый бит, если вдруг у нас
+    //в разряде встретилась единичка, а в другом 0 -
+    //децимал больше
+    if (bit_1 != bit_2 && res == 0) {
+      if (bit_2 > bit_1) {
+        res = -1;
+      } else {
+        res = 1;
+      }
+    }
+  }
+  return res;
+}
+
+//функция сравнения битов между биг децималами
+int big_decimal_compare(big_decimal dec1, big_decimal dec2) {
+  int res = decimal_compare(dec1.decimal[1], dec2.decimal[1]);
+  //сравниваем сначала старшие части децимала, если они равны,
+  //проверяем младшие
+  if (res == 0) res = decimal_compare(dec1.decimal[0], dec2.decimal[0]);
+  return res;
+}
+
+//функция логического отрицания для децимала
+s21_decimal decimal_bin_not(s21_decimal dec) {
+  s21_decimal res = (s21_decimal){{0, 0, 0, 0}};
+  res.bits[0] = ~dec.bits[0];
+  res.bits[1] = ~dec.bits[1];
+  res.bits[2] = ~dec.bits[2];
+  res.bits[3] = ~dec.bits[3];
+
+  return res;
+}
+
+//функция бинарного вычитания
+big_decimal big_dec_binar_sub(big_decimal dec_1, big_decimal dec_2) {
+  big_decimal res;
+  dec_2.decimal[0] = decimal_bin_not(dec_2.decimal[0]);
+  dec_2.decimal[1] = decimal_bin_not(dec_2.decimal[1]);
+  //используем вновь метод дополнение до двух
+  //или часто его называет - дополнительный код
+  //создаем массив, в который уже положили единицу, для
+  //получения отрицательного значения числа
+  big_decimal one = decimal_to_big((s21_decimal){{1, 0, 0, 0}});
+
+  dec_2 = big_decimal_bin_add(dec_2, one);
+  res = big_decimal_bin_add(dec_1, dec_2);
+
+  return res;
+}
+
+//функция аналогична сдвигу влево, теперь сдвиг в право
+//разница только в переносах битов, перекидывали из младших
+//в старшие, а сейчас из старших в младшие
+
+s21_decimal binary_shift_right_one(s21_decimal dec) {
+  s21_decimal res = (s21_decimal){{0, 0, 0, 0}};
+
+  int bit3 = is_int_set_bit(dec.bits[3], 0);
+  unsigned res3 = dec.bits[3];
+  res3 = res3 >> 1;
+  res.bits[3] = res3;
+
+  int bit2 = is_int_set_bit(dec.bits[2], 0);
+  unsigned res2 = dec.bits[2];
+  res2 = res2 >> 1;
+  res.bits[2] = res2;
+
+  int bit1 = is_int_set_bit(dec.bits[1], 0);
+  unsigned res1 = dec.bits[1];
+  res1 = res1 >> 1;
+  res.bits[1] = res1;
+
+  unsigned res0 = dec.bits[0];
+  res0 = res0 >> 1;
+  res.bits[0] = res0;
+
+  if (bit3) {
+    res.bits[2] = set_bit(res.bits[2], 31);
+  }
+  if (bit2) {
+    res.bits[1] = set_bit(res.bits[1], 31);
+  }
+  if (bit1) {
+    res.bits[0] = set_bit(res.bits[0], 31);
+  }
+  return res;
+}
+//функция аналогична сдвигу влево на значение shift
+big_decimal binary_big_shift_right(big_decimal dec, int shift) {
+  big_decimal res = dec;
+  for (int i = shift; i > 0; i--) {
+    int bit1 = is_decimal_set_bit(res.decimal[1], 0);
+    res.decimal[0] = binary_shift_right_one(res.decimal[0]);
+    res.decimal[1] = binary_shift_right_one(res.decimal[1]);
+    if (bit1) {
+      res.decimal[0] = decimal_set_bit(res.decimal[0], 127);
+    }
+  }
+  return res;
+}
+//бинарное деление через вычитание - метод восстановления остатка
+big_decimal big_decimal_bin_div(big_decimal dec1, big_decimal dec2,
+big_decimal *ost) {
+big_decimal res;
+//частичный остаток при расчетах:
+big_decimal part_ost = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+//частное
+big_decimal quotient = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+//сначала проверяем крайние случаи - делимое равно 0: 
+if (decimal_equal_zero(dec1.decimal[0])
+&& decimal_equal_zero(dec1.decimal[1])) {
+  part_ost = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+  quotient = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+} else if (big_decimal_compare(dec1, dec2) == -1) {
+  //делимое меньше делителя
+}
+}
+//in process.. еще пишу алгоритм в тетрадке
