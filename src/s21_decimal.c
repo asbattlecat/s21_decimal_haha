@@ -2,9 +2,13 @@
 
 int main() {
     s21_decimal value = {0};
-    set_scale_and_sign (&value, 2, 1);
-    print_binary (value.bits[3]);
-    
+    //set_scale_and_sign (&value, 2, 1);
+    //print_binary (value.bits[3]);
+    int x = 0b1010;
+    printf ("%d\n", x);
+    x = x << 3;
+    x = x >> 2;
+    printf ("%d\n", x);
 }
 
 void set_scale_and_sign (s21_decimal *decimal,int scale, int sign) {
@@ -29,5 +33,5 @@ void print_binary (int number) {
 }
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
-    
+    //int return_value = OK;
 }
