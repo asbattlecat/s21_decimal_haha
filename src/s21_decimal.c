@@ -1,33 +1,49 @@
 #include "s21_decimal.h"
 
+
 /*
+  @param (int) - 123
   Рассмотрим порядок интов и битов
   Первый инт (bits[0]) - справа налево от 0 до 31
   Второй инт (bits[1]) - прилепляем его слева от первого инта
   И так далее
 */
-
+struct s{
+  int a
+};
 int main() {
-  s21_decimal value_1;
-  nulling(NULL, NULL, &value_1);
-  value_1.bits[0] = 0b00000000000000000000000000010000;
-  value_1.bits[3] = 0b10000000000000000000000000000000;
-  int number = 0;
-  if (!s21_from_decimal_to_int(value_1, &number)) {
-    printf("Result:\n\n");
-    print_bits(value_1);
-    printf("\n\n%d\n\n", number);
-  }
-  // for (int i = 3; i >= 0; i--) {
-  //   printf("%d ", v.bits[i]);
+
+  double f = __FLT_MAX__ + 40000;
+  float s = f;
+  int exp;
+  float man = frexpf(f, &exp);
+  printf("%d %f %f\n", exp, man,s );
+
+
+  // char buffer[64];
+  // float v = 14123.0f;
+  // sprintf(buffer, "%f", v);
+
+  // int exponent;
+  // float mantissa = frexpf(v,&exponent);
+  // float tr = powf(2, exponent--);
+  // ufloat uf = { .f = mantissa};
+  // for(int i = 22; i >= 0; i--){
+  //   int bit = uf.parts.mantissa >> i & 0x01;
+  //   if(bit) tr += powf(2, i - 22 + exponent);
+  //   printf("%d", uf.parts.mantissa >> i & 1);
   // }
+  // printf("\nEXPONENT: %d\nORIGIN: %f\nTR:  %f\nSTRING: %s\n",exponent, v, tr/2, buffer);
+  
+  // sprintf(buffer, "%f", v);
+  // for(;*(buffer + strlen(buffer) - 1) == '0'; *(buffer + strlen(buffer) - 1) = '\0');
+  // printf("%s %f\n%d\n", buffer, v, strlen(strchr(buffer, '.') + 1));
 }
 
-/*
+/**
   Условия для вызова в s21_add s21_sub:
     1. |value_1| > value_2 && value_1 < 0 && value_2 > 0
     2. |value_2| > value_1 && value_2 < 0 && value_1 > 0
-
   что не реализовано:
     1. работа со scale
     2. обработка ошибок
@@ -121,25 +137,3 @@ int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
   return return_value;
 }
 
-int s21_from_int_to_decimal(int src, s21_decimal *dst) {
-  int return_value = OK;
-  if (src < 0) set_sign(&dst, 1);
-  dst->bits[0] = src;
-  return return_value;
-}
-
-int s21_from_decimal_to_int(s21_decimal src, int *dst) {
-  int return_value = OK;
-  *dst = src.bits[0];
-  if (get_sign(src)) *dst *= -1;
-  return return_value;
-}
-
-int s21_from_float_to_decimal(float src, s21_decimal *dst) {
-  int return_value = OK;
-  if (src < 0) set_sign(&dst, 1);
-  for (int position = 0; position < 23; position++) {
-    
-  }
-  return return_value;
-}

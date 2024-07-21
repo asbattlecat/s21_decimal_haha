@@ -1,5 +1,5 @@
-GCC=gcc -Wall -Werror -Wextra -std=c11
-FILES=s21_decimal.c s21_decimal.h lib.c
+GCC=gcc  -std=c11 #-Wall -Werror -Wextra
+FILES=s21_decimal.c lib.c s21_convertation.c
 
 add: build
 

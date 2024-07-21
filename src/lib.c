@@ -38,7 +38,7 @@ int get_bit(s21_decimal value, int position) {
 
 float get_bit_float(float value, int position) {
   float one = 1.0;
-  return value & (one << position);
+  // return value & (one << position);
 }
 
 // получает данные о знаке, если 1 - то знак минус
