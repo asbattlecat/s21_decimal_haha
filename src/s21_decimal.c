@@ -1,8 +1,6 @@
 #include "s21_decimal.h"
 
-#include <math.h>
-#include <stdio.h>
-
+#include "helpers.c"
 // int main() {
 //   printf("Is it stll works? ");
 // }
@@ -737,6 +735,243 @@ big_decimal big_decimal_bin_div(big_decimal dec1, big_decimal dec2,
   return res;
 }
 
+//функция поиска насколько разрядов нужно
+//уменьшить биг децимал, для перевода в децимал
+int big_dec_get_shift_to_default_dec(big_decimal src) {
+  int shift = 0;
+  if (!(decimal_equal_zero(src.decimal[0]) &&
+        decimal_equal_zero(src.decimal[1]))) {
+    //максимальное 96 битное число
+    big_decimal max =
+        decimal_to_big((s21_decimal){{FULLBITES, FULLBITES, FULLBITES, 0}});
+    //находим насколько src больше чем максимальное 96-битное число
+    big_decimal quotient = big_decimal_bin_div(src, max, NULL);
+    //перебираем все степени 10-ки, чтобы найти блишайшую большую степень, чем
+    // quotient, перебрать степени гораздо быстрее чем в цикле делить на 10,
+    //поэтому as it was
+    while (1) {
+      int compare = decimal_compare(quotient.decimal[0], all_ten_pows[shift]);
+      if (compare == 1 || compare == 0) {
+        break;
+      }
+      shift++;
+    }
 
-// in process.. еще пишу алгоритм в тетрадке
-//int big_decimal_get_shift_to_decimal
+    //проверка что src сможет записаться в 96-бит, если поделить на 10
+    //в найденной степени
+    big_decimal temp =
+        big_decimal_bin_div(src, decimal_to_big(all_ten_pows[shift]), NULL);
+    // Если вдруг не поместилось, тогда берем следующую степени - этого будет
+    // достаточно
+    if (!decimal_equal_zero(temp.decimal[1]) || temp.decimal[0].bits[3] != 0) {
+      shift++;
+    }
+  }
+  return shift;
+}
+
+//функция проверки децимала на корректность (все флаги установлены верно)
+int is_decimal_correct(s21_decimal dec) {
+  int res = 1;
+  if ((dec.bits[3] & FIRST) || dec.bits[3] & SECOND) {
+    res = 0;
+  } else {
+    int scale = (dec.bits[3] & SCALE) >> 16;
+    if (scale < 0 || scale > 28) res = 1;
+  }
+  return res;
+}
+//банковское округление
+s21_decimal s21_round_banking(s21_decimal integ, s21_decimal frac) {
+  s21_decimal res;  //результат округления
+  s21_decimal zero_five = {{5, 0, 0, 0x00010000}};  // 0.5
+  if (s21_is_equal(frac, zero_five)) {
+    //если дробная часть равна 0.5
+    if ((integ.bits[0] & 1) != 1) {
+      //если целая часть четная, тогда без измнений
+      res = integ;
+    } else {
+      //если целая часть четная - увеличиваем на 1.
+      if (s21_is_equal(integ,
+                       (s21_decimal){{FULLBITES, FULLBITES, FULLBITES, 9}})) {
+        res.bits[3] = 1;  //обозначаем переполнение
+      } else {
+        s21_add(integ, (s21_decimal){{1, 0, 0, 0}}, &res);
+      }
+    }
+  } else if (s21_is_greater(frac, zero_five)) {
+    //если дробная часть > 0,5 увеличиваем целую часть на 1
+    if (s21_is_equal(integ,
+                     (s21_decimal){{FULLBITES, FULLBITES, FULLBITES, 9}})) {
+      res.bits[3] = 1;  //обозначаем переполнение
+    } else {
+      s21_add(integ, (s21_decimal){{1, 0, 0, 0}}, &res);
+    }
+  } else {
+    //если дробная часть < 0.5 - оставляем целую без изменения.
+    res = integ;
+  }
+  return res;
+}
+
+// int s21_help_to_multi(s21_decimal src_1, s21_decimal src_2,
+// s21_decimal *res) {
+//   //int err = 0;
+//   int scale_1 = (src_1.bits[3] & SCALE) >> 16; //определяем scale
+//   int scale_2 = (src_1.bits[3] & SCALE) >> 16;
+//   src_1.bits[3] = 0;
+//   src_1.bits[3] = 0; //зануляем все, кроме мантисы для первичного умножения
+//   big_decimal big_muli = bin_multi(src_1, src_2);
+//   //считаем насколько нужно поделить результат, чтобы он влез в 96 бит
+//   int shift = big_dec_get_shift_to_default_dec(big_muli);
+//   int result_scale = scale_1 + scale_2 - shift; // scale после умножения
+//   // if (result_scale < 0) {
+//   //   //проверка результата на корректность, если степень отрицательна
+//   //   //что-то пошло не так - возвращаем переполнение
+//   //   //err = 1;
+//   //  *res = (s21_decimal){{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x7FFFFFFF}};
+//   // } //else {
+//   //   //если результат надо делить более, чем на 10^28, то уменьшаем его,
+//   //   //чтобы далее делить на 10
+//   //  // while (shift > 28) {
+//   //     //бля я запутался в пизду, потом доделаю функцию
+//   // }
+// //}
+// }
+
+//функция выравнивания двух децималов и запись в большой децимал
+void s21_decimal_leveling(s21_decimal src_1, s21_decimal src_2,
+                          big_decimal *val_1, big_decimal *val_2) {
+  //получаем scale из обеих децималов
+  int scale_1 = (src_1.bits[3] & SCALE) >> 16;
+  int scale_2 = (src_2.bits[3] & SCALE) >> 16;
+
+  //временные копии чисел без степеней, обнулим инфу о знаке и степени
+  s21_decimal temp_1 = src_1;
+  s21_decimal temp_2 = src_2;
+
+  temp_1.bits[3] = 0;
+  temp_2.bits[3] = 0;
+  if (scale_1 > scale_2) {
+    //выравниваем числа по степени:
+    //если степень первого числа больше, сохраняем его как есть
+    *val_1 = decimal_to_big(temp_1);
+
+    //умножим второго число на 10 в степени scale1 - scale2 чтобы выровнить
+    //степени
+    *val_2 = bin_multi(temp_2, all_ten_pows[scale_1 - scale_2]);
+  } else if (scale_1 < scale_2) {
+    *val_1 = bin_multi(temp_1, all_ten_pows[scale_2 - scale_1]);
+    *val_2 = decimal_to_big(temp_2);
+  } else {
+    *val_1 = decimal_to_big(temp_1);
+    *val_2 = decimal_to_big(temp_2);
+  }
+}
+
+//инвертирование знакового бита в децимале
+int s21_negate(s21_decimal src, s21_decimal *res) {
+  src.bits[3] =
+      src.bits[3] & MINUS ? src.bits[3] & ~MINUS : src.bits[3] | MINUS;
+  *res = src;
+  return 0;
+}
+
+//функция преобразует значения из чар и записывает их в децимал
+s21_decimal s21_decimal_get_from_char(char c) {
+  s21_decimal result;
+
+  switch (c) {
+    case '0':
+      result = (s21_decimal){{0, 0, 0, 0}};
+      break;
+    case '1':
+      result = (s21_decimal){{1, 0, 0, 0}};
+      break;
+    case '2':
+      s21_from_int_to_decimal(2, &result);
+      break;
+    case '3':
+      s21_from_int_to_decimal(3, &result);
+      break;
+    case '4':
+      s21_from_int_to_decimal(4, &result);
+      break;
+    case '5':
+      s21_from_int_to_decimal(5, &result);
+      break;
+    case '6':
+      s21_from_int_to_decimal(6, &result);
+      break;
+    case '7':
+      s21_from_int_to_decimal(7, &result);
+      break;
+    case '8':
+      s21_from_int_to_decimal(8, &result);
+      break;
+    case '9':
+      s21_from_int_to_decimal(9, &result);
+      break;
+  }
+  return result;
+}
+//функция извлечения exp из строки в научной нотации
+int s21_get_float_exp_from_string(char *str) {
+  int result = 0;
+  char *ptr = str;
+  while (*ptr) {
+    if (*ptr == 'E') {
+      ++ptr;
+      result = strtol(ptr, NULL, 10);
+      break;
+    }
+    ++ptr;
+  }
+
+  return result;
+}
+
+// Функция округляет число вниз к целому значению в сторону минус бесконечности
+int s21_floor(s21_decimal value, s21_decimal *result) {
+  // Преобразуем в рабочий децимал
+  work_decimal dec_work = decimal_to_work(value);
+  // Переменная для хранения остатка дробной части после удаления
+  int trash = 0;
+  // Определяем скейл
+  // Если масштаб больше 28, устанавливаем его в 28
+  int scale =
+      (((value.bits[3] & SC) >> 16) > 28) ? 28 : ((value.bits[3] & SC) >> 16);
+  // Убираем дробную часть числа, сохраняя остаток в переменной trash
+  for (int i = 0; i < scale; i++) {
+    // Перемещаем указатель на следующую позицию и получаем значение
+    int last = pointright(&dec_work);
+    // Суммируем оставшуюся дробную часть
+    trash += last;
+  }
+  // Если есть остаток и число отрицательное
+  // Это означает, что мы должны округлить число вниз в сторону минус
+  // бесконечности
+  if (trash > 0 && value.bits[3] & MINUS) {
+    // Округляем число до следующего меньшего целого
+    // Это необходимо для корректного округления отрицательного числа
+    dec_work.bits[0]++;
+    // Обрабатываем возможное переполнение после увеличения мантиссы
+    getoverflow(&dec_work);
+  }
+  // Преобразуем обратно в децимад
+  *result = work_to_decimal(dec_work);
+  // Устанавливаем знак для результата, исходя из знака входного числа
+  result->bits[3] = value.bits[3] & MINUS;
+  return 0;  // Возвращаем 0, так как функция выполняется успешно
+}
+
+// просто делаем s21_floor но без знака. Знак потом
+// возвращаем. Так получается что мы в любом случае
+// просто отбрасываем вещественную часть
+int s21_truncate(s21_decimal value, s21_decimal *result) {
+  int sign = value.bits[3] & MINUS;
+  value.bits[3] &= ~MINUS;
+  s21_floor(value, result);
+  result->bits[3] |= sign;
+  return 0;
+}
