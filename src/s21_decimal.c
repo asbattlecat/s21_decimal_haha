@@ -234,6 +234,7 @@ int compare_big_decimal (big_decimal *big_value_1, big_decimal *big_value_2) { /
         }
     }
     return return_value;
+    // Эту функцию нужно использовать после приведения к общему знаменателю
 }
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
