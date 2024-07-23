@@ -814,31 +814,6 @@ s21_decimal s21_round_banking(s21_decimal integ, s21_decimal frac) {
   return res;
 }
 
-// int s21_help_to_multi(s21_decimal src_1, s21_decimal src_2,
-// s21_decimal *res) {
-//   //int err = 0;
-//   int scale_1 = (src_1.bits[3] & SCALE) >> 16; //определяем scale
-//   int scale_2 = (src_1.bits[3] & SCALE) >> 16;
-//   src_1.bits[3] = 0;
-//   src_1.bits[3] = 0; //зануляем все, кроме мантисы для первичного умножения
-//   big_decimal big_muli = bin_multi(src_1, src_2);
-//   //считаем насколько нужно поделить результат, чтобы он влез в 96 бит
-//   int shift = big_dec_get_shift_to_default_dec(big_muli);
-//   int result_scale = scale_1 + scale_2 - shift; // scale после умножения
-//   // if (result_scale < 0) {
-//   //   //проверка результата на корректность, если степень отрицательна
-//   //   //что-то пошло не так - возвращаем переполнение
-//   //   //err = 1;
-//   //  *res = (s21_decimal){{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x7FFFFFFF}};
-//   // } //else {
-//   //   //если результат надо делить более, чем на 10^28, то уменьшаем его,
-//   //   //чтобы далее делить на 10
-//   //  // while (shift > 28) {
-//   //     //бля я запутался в пизду, потом доделаю функцию
-//   // }
-// //}
-// }
-
 //функция выравнивания двух децималов и запись в большой децимал
 void s21_decimal_leveling(s21_decimal src_1, s21_decimal src_2,
                           big_decimal *val_1, big_decimal *val_2) {
@@ -940,7 +915,7 @@ int s21_floor(s21_decimal value, s21_decimal *result) {
   // Определяем скейл
   // Если масштаб больше 28, устанавливаем его в 28
   int scale =
-      (((value.bits[3] & SC) >> 16) > 28) ? 28 : ((value.bits[3] & SC) >> 16);
+      (((value.bits[3] & SCALE) >> 16) > 28) ? 28 : ((value.bits[3] & SCALE) >> 16);
   // Убираем дробную часть числа, сохраняя остаток в переменной trash
   for (int i = 0; i < scale; i++) {
     // Перемещаем указатель на следующую позицию и получаем значение
@@ -956,7 +931,7 @@ int s21_floor(s21_decimal value, s21_decimal *result) {
     // Это необходимо для корректного округления отрицательного числа
     dec_work.bits[0]++;
     // Обрабатываем возможное переполнение после увеличения мантиссы
-    getoverflow(&dec_work);
+    get_overflow(&dec_work);
   }
   // Преобразуем обратно в децимад
   *result = work_to_decimal(dec_work);
@@ -975,3 +950,67 @@ int s21_truncate(s21_decimal value, s21_decimal *result) {
   result->bits[3] |= sign;
   return 0;
 }
+
+
+int s21_help_to_multi(s21_decimal src_1, s21_decimal src_2,
+                   s21_decimal *res) {
+  int err = 0;
+  int scale_1 = (src_1.bits[3] & SCALE) >> 16; //извлекаем scale
+  int scale_2 = (src_1.bits[3] & SCALE) >> 16;
+  
+  src_1.bits[3] = 0; //зануляем все кроме мантисы перед вычислениями
+  src_2.bits[3] = 0;
+  //перемножаем без скейл как два больших числа
+  big_decimal big_mult = bin_multi(src_1, src_2);
+  //расчитаем насколько нужно поделить результат, чтобы он влез в 96 бит
+  int shift = big_dec_get_shift_to_default_dec(big_mult);
+  int scale_res = scale_1 + scale_2 - shift;
+  if (scale_res < 0)  {
+    err = 1;
+    //проверяем степень на корректность
+  *res = (s21_decimal){{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x7FFFFFFF}};
+  } else {
+    //если результат надо делить более чем на 10^28 уменьшаем его, т.к
+    //вещественная часть у нас максимум 28 знаков
+    while ((shift > 28))
+    {
+      big_mult = big_decimal_bin_div(big_mult, 
+      decimal_to_big((s21_decimal){{10, 0, 0, 0}}), NULL);
+      shift--;
+    }
+    // если слишком много цифр после запятой, то корректируем результаты
+    if (scale_res > 28) {
+      big_decimal temp = big_mult;
+      int scale_temp = scale_res;
+      while (scale_temp > 28) {
+        temp = big_decimal_bin_div(temp, 
+        decimal_to_big((s21_decimal){{10, 0, 0, 0}}), NULL);
+        scale_temp--;
+      }
+      shift = scale_res - scale_temp + shift;
+      scale_res = scale_temp;
+    }
+    big_decimal ostatok = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+    big_decimal pow_ten = decimal_to_big(all_ten_pows[shift]);
+
+    big_mult = big_decimal_bin_div(big_mult, pow_ten, &ostatok);
+
+    //уменьшаем результат, чтобы он влез в 96 бит
+    //устанавливаем степень для остатка, чтобы выполнить банковское округление
+    ostatok.decimal[0].bits[3] += shift << 16;
+    //выполняем банковское округление исходя из остатка от деления
+    big_mult.decimal[0].bits[3] += scale_res << 16;
+    //проверяем на переполнение 
+    if (!decimal_equal_zero(big_mult.decimal[1]) ||
+    is_decimal_correct(big_mult.decimal[0])) {
+      err = 1;
+     *res = (s21_decimal){{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x7FFFFFFF}};
+    } else {
+      *res = big_mult.decimal[0];
+    }
+    
+  }
+   return err;
+                   }
+
+                  
