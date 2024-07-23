@@ -1013,4 +1013,33 @@ int s21_help_to_multi(s21_decimal src_1, s21_decimal src_2,
    return err;
                    }
 
+int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
+  int err = 0;
+  if (!result) {
+    err = 4;
+  } else if (!is_decimal_correct(value_1) || !is_decimal_correct(value_2)) {
+    err = 4;
+     *result = (s21_decimal){{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x7FFFFFFF}};
+  } else {
+    s21_decimal temp_decimal = {{0, 0, 0, 0}};
+    err = s21_help_to_multi(value_1, value_2, &temp_decimal);
+
+    if((value_1.bits[3] & MINUS) != (value_2.bits[3] & MINUS)) {
+      s21_negate(temp_decimal, &temp_decimal);
+    }
+    if (err == 1) {
+      if (temp_decimal.bits[3] & MINUS) {
+        err = 2;
+      }
+    }
+    if (err == 0 && s21_is_not_equal(value_1, (s21_decimal){{0, 0, 0, 0}}) &&
+    s21_is_not_equal(value_2, (s21_decimal){{0, 0, 0, 0}}) && 
+    s21_is_equal(temp_decimal, (s21_decimal){{0, 0, 0, 0}})) {
+    err = 2;
+    }
+    *result = temp_decimal;
+  }
+  return err;
+}
+
                   

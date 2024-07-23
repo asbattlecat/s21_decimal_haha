@@ -62,3 +62,16 @@ s21_decimal binary_shift_right_one(s21_decimal dec);
 big_decimal binary_big_shift_right(big_decimal dec, int shift);
 big_decimal big_decimal_bin_div(big_decimal dec1, big_decimal dec2,
                                 big_decimal *ost);
+int big_dec_get_shift_to_default_dec(big_decimal src);
+int is_decimal_correct(s21_decimal dec);
+s21_decimal s21_round_banking(s21_decimal integ, s21_decimal frac);
+void s21_decimal_leveling(s21_decimal src_1, s21_decimal src_2,
+                          big_decimal *val_1, big_decimal *val_2);
+int s21_negate(s21_decimal src, s21_decimal *res);
+s21_decimal s21_decimal_get_from_char(char c);
+int s21_get_float_exp_from_string(char *str);
+int s21_floor(s21_decimal value, s21_decimal *result);
+int s21_truncate(s21_decimal value, s21_decimal *result);
+int s21_help_to_multi(s21_decimal src_1, s21_decimal src_2,
+                   s21_decimal *res);
+int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
