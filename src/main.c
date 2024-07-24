@@ -17,6 +17,8 @@ int main(void) {
 
   s21_add(dec1, dec2, &res_dec);
 
+  s21_round(dec1, &dec1);
+
   printf("dec1.bits[0] = %d\n", dec1.bits[0]);
   printf("dec1.bits[1] = %x\n", dec1.bits[1]);
   printf("dec1.bits[2] = %x\n", dec1.bits[2]);
