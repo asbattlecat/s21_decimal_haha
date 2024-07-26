@@ -11,6 +11,9 @@
 #define FULLBITES 0xffffffff  // full 11111111 11111111 11111111 11111111
 #define FIRST 0xFFFF          // checking 00000000 00000000 11111111 11111111
 #define SECOND 0x7F000000     // checking 01111111 00000000 00000000 00000000
+#define MAX_FLOAT_TO_CONVERT 79228157791897854723898736640.0f
+#define MIN_FLOAT_TO_CONVERT \
+  0.00000000000000000000000000010000000031710768509710513471352647538147514756461109f
 
 typedef struct {
   int bits[4];
@@ -31,6 +34,7 @@ typedef struct {
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
 int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
 int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
+int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
 
 // Comparison
 int s21_is_less(s21_decimal dec1, s21_decimal dec2);
@@ -42,7 +46,9 @@ int s21_is_not_equal(s21_decimal dec1, s21_decimal dec2);
 
 // Conversion
 int s21_from_int_to_decimal(int src, s21_decimal *dst);
+int s21_from_decimal_to_float(s21_decimal src, float *dst);
 int s21_from_decimal_to_int(s21_decimal src, int *dst);
+int s21_from_float_to_decimal(float src, s21_decimal *dst);
 
 // Others
 int s21_floor(s21_decimal value, s21_decimal *result);
@@ -88,10 +94,14 @@ int multiplication(s21_decimal value_1, s21_decimal value_2,
 void s21_decimal_leveling(s21_decimal value_1, s21_decimal value_2,
                           big_decimal *value_1l, big_decimal *value_2l);
 s21_decimal s21_round_banking(s21_decimal integral, s21_decimal fractional);
-//это все готово
+big_decimal big_decimal_binary_multiplication(big_decimal decimal1,
+                                              s21_decimal decimal2);
+int s21_div_calc_fractional(big_decimal *res, big_decimal value_2l,
+                            big_decimal *remainder);
+int s21_div_helper(big_decimal value_2l, big_decimal res, big_decimal remainder,
+                   s21_decimal *result);
+s21_decimal s21_decimal_get_from_char(char c);
+int s21_get_float_exp_from_string(char *str);
+s21_decimal s21_float_string_to_decimal(char *str);
 
-// Это нужно будет сделать.
-int s21_from_float_to_decimal(float src, s21_decimal *dst);
-int s21_from_decimal_to_float(s21_decimal src, float *dst);
-int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
 #endif  // S21_DECIMAL_H_

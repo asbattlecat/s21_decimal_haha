@@ -776,3 +776,212 @@ s21_decimal s21_round_banking(s21_decimal integral, s21_decimal fractional) {
 
   return result;
 }
+//функция бинарного умножения, такая как binary mul, но принимает в себя биг
+//децимал понадобилось.
+big_decimal big_decimal_binary_multiplication(big_decimal decimal1,
+                                              s21_decimal decimal2) {
+  big_decimal int256_result = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+  big_decimal int256_tmp1 = decimal1;
+
+  int max_bit = s21_decimal_get_not_zero_bit(decimal2);
+
+  for (int i = 0; i <= max_bit; i++) {
+    if (s21_decimal_is_set_bit(decimal2, i) != 0) {
+      int256_result = big_decimal_binary_addition(int256_result, int256_tmp1);
+    }
+
+    int256_tmp1 = big_decimal_binary_shift_left(int256_tmp1, 1);
+  }
+
+  return int256_result;
+}
+
+int s21_div_calc_fractional(big_decimal *res, big_decimal value_2l,
+                            big_decimal *remainder) {
+  int power = 0;
+  big_decimal number = *res;
+
+  big_decimal tmp;
+  big_decimal tmp_remainder = *remainder;
+
+  // Производим расчеты пока остаток не будет полностью равен нулю или пока
+  // степень не станет максимально допустимой (28)
+  while ((!s21_int128_binary_equal_zero((*remainder).decimals[0]) ||
+          !s21_int128_binary_equal_zero((*remainder).decimals[1])) &&
+         power < 28) {
+    // Сохраняем значения полученных числа и остатка перед дальнейшей итерацией
+    // расчетов Чтобы вернуть эти значения в случае переполнения
+    big_decimal number_stored = number;
+    big_decimal remainder_stored = tmp_remainder;
+
+    // Производим расчеты (вжик вжик, см бриф)
+    number =
+        big_decimal_binary_multiplication(number, (s21_decimal){{10, 0, 0, 0}});
+    tmp_remainder = big_decimal_binary_multiplication(
+        tmp_remainder, (s21_decimal){{10, 0, 0, 0}});
+    tmp = big_decimal_binary_division(tmp_remainder, value_2l, &tmp_remainder);
+    number = big_decimal_binary_addition(number, tmp);
+
+    // Возвращаем предварительно сохраненные число и остаток, если произошло
+    // переполнение при расчете
+    if (!s21_is_correct_decimal(number.decimals[0])) {
+      number = number_stored;
+      tmp_remainder = remainder_stored;
+      break;
+    }
+
+    ++power;
+  }
+
+  *res = number;
+  *remainder = tmp_remainder;
+
+  return power;
+}
+
+int s21_div_helper(big_decimal value_2l, big_decimal res, big_decimal remainder,
+                   s21_decimal *result) {
+  int error = 0;
+
+  // рассчитываем дробную часть нашего результата и получаем в res результат,
+  // включая дробную часть после расчетов в remainder останется остаток от
+  // деления (который не поместился в дробную часть) power1 - значение степени
+  // результата
+  int power1 = s21_div_calc_fractional(&res, value_2l, &remainder);
+
+  big_decimal tmp_res = decimal_to_big((s21_decimal){{0, 0, 0, 0}});
+  // Переводит остаток, полученный в расчете выше, в decimal, чтобы использовать
+  // его для округления power2 - значение степени данного decimal
+  int power2 = s21_div_calc_fractional(&tmp_res, value_2l, &remainder);
+
+  // Устанавливаем полученную степень для нашего остатка
+  tmp_res.decimals[0].bits[3] |= power2 << 16;
+
+  if (s21_is_equal(tmp_res.decimals[0], (s21_decimal){{5, 0, 0, 0x00010000}})) {
+    if (!s21_int128_binary_equal_zero(remainder.decimals[0]) ||
+        !s21_int128_binary_equal_zero(remainder.decimals[1])) {
+      // Если остаток от деления в виде decimal получился ровно 0.5, но после
+      // вычисления остаток от деления не равен 0, то корректируем остаток, т.к.
+      // фактически он больше 0.5: 0.5 + 0.0000000000000000000000000001 =
+      // 0.5000000000000000000000000001
+      s21_add(tmp_res.decimals[0], (s21_decimal){{0x1, 0x0, 0x0, 0x1C0000}},
+              &tmp_res.decimals[0]);
+    }
+  }
+  // Выполняем банковское округления результата, исходя из остатка от деления
+  res.decimals[0] = s21_round_banking(res.decimals[0], tmp_res.decimals[0]);
+
+  // Устанавливаем степень результата
+  // s21_decimal_set_power(&res.decimals[0], power1);
+  res.decimals[0].bits[3] |= power1 << 16;
+  // Анализируем результат на корректность (переполнение)
+  if (!s21_int128_binary_equal_zero(res.decimals[1]) ||
+      !s21_is_correct_decimal(res.decimals[0])) {
+    error = 1;
+    *result = (s21_decimal){{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0x7FFFFFFF}};
+  } else {
+    *result = res.decimals[0];
+  }
+
+  return error;
+}
+
+s21_decimal s21_decimal_get_from_char(char c) {
+  s21_decimal result;
+
+  switch (c) {
+    case '0':
+      result = (s21_decimal){{0, 0, 0, 0}};
+      break;
+    case '1':
+      result = (s21_decimal){{1, 0, 0, 0}};
+      break;
+    case '2':
+      s21_from_int_to_decimal(2, &result);
+      break;
+    case '3':
+      s21_from_int_to_decimal(3, &result);
+      break;
+    case '4':
+      s21_from_int_to_decimal(4, &result);
+      break;
+    case '5':
+      s21_from_int_to_decimal(5, &result);
+      break;
+    case '6':
+      s21_from_int_to_decimal(6, &result);
+      break;
+    case '7':
+      s21_from_int_to_decimal(7, &result);
+      break;
+    case '8':
+      s21_from_int_to_decimal(8, &result);
+      break;
+    case '9':
+      s21_from_int_to_decimal(9, &result);
+      break;
+  }
+
+  return result;
+}
+
+int s21_get_float_exp_from_string(char *str) {
+  int result = 0;
+  char *ptr = str;
+  while (*ptr) {
+    if (*ptr == 'E') {
+      ++ptr;
+      result = strtol(ptr, NULL, 10);
+      break;
+    }
+    ++ptr;
+  }
+
+  return result;
+}
+
+s21_decimal s21_float_string_to_decimal(char *str) {
+  int digits_counter = 6;
+  s21_decimal result = (s21_decimal){{0, 0, 0, 0}};
+  char *ptr = str;
+  // Получаем в любом случае заново степень float из научной записи, а не
+  // передаем полученную ранее в s21_from_float_to_decimal, т.к. она могла
+  // измениться из-за округления
+  int exp = s21_get_float_exp_from_string(str);
+  while (*ptr) {
+    if (*ptr == '.') {
+      // Точку игнорируем, итоговую степень decimal мы будем отдельно считать
+      ++ptr;
+      continue;
+    } else if (*ptr >= '0' && *ptr <= '9') {
+      // Переводим цифры в строке в decimal, начиная с первой, используя
+      // арифметику decimal
+      s21_decimal tmp = (s21_decimal){{0, 0, 0, 0}};
+      s21_mul(s21_decimal_get_from_char(*ptr), all_ten_pows[digits_counter],
+              &tmp);
+      s21_add(result, tmp, &result);
+      --digits_counter;
+      ++ptr;
+    } else {
+      break;
+    }
+  }
+  // Учитываем, что в научной записи степень уже сдвинутая, чтобы далее
+  // корректно выставить степень decimal
+  exp = exp - 6;
+  if (exp > 0) {
+    // Для положительной степени производим умножение на 10^exp
+    s21_mul(result, all_ten_pows[exp], &result);
+  } else if (exp < 0) {
+    // Для отрицательной степени производим деление на 10^exp
+    if (exp < -28) {
+      // Отдельно обрабатываем очень маленькие степени, т.к. мы не сможем
+      // поделить больше чем на 10^28
+      s21_div(result, all_ten_pows[28], &result);
+      exp += 28;
+    }
+    s21_div(result, all_ten_pows[-exp], &result);
+  }
+  // получаем результат
+  return result;
+}
