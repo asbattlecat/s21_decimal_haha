@@ -13,7 +13,7 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
     // биты в более старшие, если нужно.
     for (int i = 0; i < 6; i++) {
       temp_result.bits[i] += dec1_work.bits[i] + dec2_work.bits[i];
-      getoverflow(&temp_result);
+      res = getoverflow(&temp_result);
     }
 
     // в результат суммы передаем scale
@@ -54,7 +54,7 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
       } else {
         temp_result.bits[i] += dec1_work.bits[i] + (~dec2_work.bits[i] + 1);
       }
-      getoverflow(&temp_result);
+      res = getoverflow(&temp_result);
     }
 
     // передаем scale в итоговый результат суммы
